@@ -2,8 +2,7 @@ yfinance
 pandas
 numpy
 scikit-learn
-streamlit==1.32.0
+streamlit
 plotly
 joblib
 requests
-altair==4.2.2
