@@ -8,3 +8,4 @@ streamlit
 plotly
 joblib
 requests
+altair
