@@ -2,6 +2,9 @@
 
 A full-stack ML application that predicts next-day stock prices using multiple machine learning models, with a FastAPI backend and interactive Streamlit dashboard.
 
+## 🚀 Live Demo
+**Dashboard:** https://stock-price-predictor-1.streamlit.app
+
 ## 🚀 Features
 - Real-time stock data fetching via Yahoo Finance
 - 30+ technical indicators (RSI, MACD, Bollinger Bands, Moving Averages)
