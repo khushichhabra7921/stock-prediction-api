@@ -14,7 +14,8 @@ st.set_page_config(
 )
 
 st.title("📈 AI Stock Price Predictor")
-st.markdown("*ML-powered predictions using Random Forest, Gradient Boosting, Linear & Ridge Regression*")
+st.markdown("*Next-day return predictions using Random Forest, Gradient Boosting, Linear & Ridge Regression, "
+            "evaluated against a no-change baseline*")
 
 # Sidebar
 st.sidebar.header("Settings")
@@ -57,36 +58,48 @@ if predict_btn:
             data = predictor.predict_next_day()
 
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Current Price", f"${data['current_price']}")
-            c2.metric("Predicted Tomorrow", f"${data['predicted_next_day']}",
-                     delta=f"{data['change_percent']}%")
-            c3.metric("Best Model", data['best_model'])
-            c4.metric("Price Change", f"${data['change']}",
-                     delta=f"{data['change_percent']}%")
+            c1.metric(f"Close ({data['as_of']})", f"${data['current_price']}")
+            c2.metric("Predicted Return", f"{data['predicted_return_percent']:+.2f}%")
+            c3.metric("Implied Price Tomorrow", f"${data['predicted_next_day']}",
+                     delta=f"${data['change']}")
+            best_acc = data['model_accuracies'][data['best_model']]['Direction_Acc']
+            c4.metric("Best Model (by direction)", data['best_model'],
+                     delta=f"{best_acc:.1%} directional accuracy", delta_color="off")
 
             st.divider()
             col_a, col_b = st.columns(2)
 
             with col_a:
-                st.markdown("**All Model Predictions**")
-                preds = data['all_model_predictions']
+                st.markdown("**Predicted Next-Day Return by Model**")
+                rets = data['all_model_returns_percent']
+                prices = data['all_model_predictions']
                 pred_df = pd.DataFrame({
-                    "Model": list(preds.keys()),
-                    "Predicted Price ($)": list(preds.values())
+                    "Model": list(rets.keys()),
+                    "Predicted Return (%)": list(rets.values()),
+                    "Implied Price ($)": [prices[m] for m in rets],
                 })
-                fig2 = px.bar(pred_df, x="Model", y="Predicted Price ($)",
-                             color="Predicted Price ($)",
-                             color_continuous_scale="blues",
+                fig2 = px.bar(pred_df, x="Model", y="Predicted Return (%)",
+                             hover_data=["Implied Price ($)"],
                              template="plotly_dark")
+                fig2.update_traces(marker_color=["#2ecc71" if r >= 0 else "#e74c3c"
+                                                 for r in pred_df["Predicted Return (%)"]])
                 fig2.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0))
                 st.plotly_chart(fig2, use_container_width=True)
 
             with col_b:
-                st.markdown("**Model Accuracy (Test Set)**")
+                st.markdown(f"**Model Accuracy (last {data['test_days']} trading days, held out)**")
                 acc = data['model_accuracies']
                 acc_df = pd.DataFrame(acc).T.reset_index()
-                acc_df.columns = ["Model", "RMSE", "MAE", "R²"]
+                acc_df = pd.DataFrame({
+                    "Model": acc_df["index"],
+                    "Directional Accuracy": (acc_df["Direction_Acc"] * 100).map("{:.1f}%".format),
+                    "RMSE (return)": acc_df["RMSE"],
+                    "Baseline RMSE (no change)": acc_df["Baseline_RMSE"],
+                }).sort_values("Directional Accuracy", ascending=False)
                 st.dataframe(acc_df, use_container_width=True, hide_index=True)
+                st.caption("Directional accuracy = share of days the predicted up/down move was right "
+                           "(50% = coin flip). Baseline RMSE assumes tomorrow's price equals today's; "
+                           "a model only adds value if its RMSE is lower.")
 
         except Exception as e:
             st.error(f"Error: {e}")
